@@ -153,7 +153,7 @@ const AppLayout = () => {
               <User className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">{user?.name || 'User'}</p>
+              <p className="text-xs font-medium truncate">{user?.fullName || 'User'}</p>
               <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
             </div>
           </div>
