@@ -244,7 +244,19 @@ const Chat = () => {
             <button
               type="submit"
               disabled={!input.trim() || isTyping}
-              className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transition-all disabled:opacity-50 flex-shrink-0"
+              className="
+  h-[50px] w-[44px]
+  flex items-center justify-center
+  bg-gradient-to-r from-blue-500 to-purple-500
+  rounded-xl
+  hover:shadow-lg hover:shadow-blue-500/30
+  transition-all
+  disabled:opacity-50
+  flex-shrink-0
+  origin-top
+  scale-y-[0.9]
+"
+
             >
               <Send className="w-4 h-4 text-white" />
             </button>
