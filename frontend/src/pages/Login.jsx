@@ -32,7 +32,7 @@ const Login = () => {
       });
 
       const result = await response.json();
-      // console.log("LOGIN RESPONSE:", result);
+      //console.log("LOGIN RESPONSE:", result);
 
 
       if (!response.ok) {
