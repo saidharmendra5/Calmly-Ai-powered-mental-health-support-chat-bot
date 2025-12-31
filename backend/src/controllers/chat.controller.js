@@ -172,45 +172,62 @@ You are Calmly, a supportive mental health AI companion.
  */
 const generateGeminiResponse = async (chatId, currentMessage) => {
     try {
-        // 1. Fetch Conversation History from DB
-        // We fetch the last 20 messages to give the bot context without hitting token limits.
+        // 1. Fetch Last 3 Messages
+        // We need 3 because the "Current Message" is already in the DB.
+        // Fetching 3 gives us: [Oldest, Previous Bot, Current User]
         const historyResult = await pool.query(
-            "SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at ASC LIMIT 20",
+            "SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 3",
             [chatId]
         );
 
-        // 2. Format History for Gemini SDK
-        // DB uses 'assistant', Gemini uses 'model'.
-        // We filter out the very last message (currentMessage) because we send that separately.
-        const history = historyResult.rows
-            .filter(msg => msg.content !== currentMessage) // Avoid duplicating the prompt if it was just saved
+        // 2. Process History
+        // a. Reverse to get chronological order (Old -> New)
+        // b. Filter out the current message (we send it separately)
+        let history = historyResult.rows
+            .reverse()
+            .filter(msg => msg.content !== currentMessage)
             .map(msg => ({
                 role: msg.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: msg.content }],
             }));
 
-        // 3. Initialize Model
+        // 3. Safety Check: History MUST start with 'user'
+        // If we only found a bot message left, we must discard it.
+        if (history.length > 0 && history[0].role === 'model') {
+            history.shift();
+        }
+
+        // 4. Initialize & Run
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash-001", // <--- CHANGE THIS
+            model: "gemini-2.5-flash-lite",  //  <---   Main model 
             systemInstruction: SYSTEM_INSTRUCTION
         });
 
-        // 4. Start Chat Session with History
-        const chat = model.startChat({
-            history: history,
-        });
-
-        // 5. Generate Response
+        const chat = model.startChat({ history: history });
         const result = await chat.sendMessage(currentMessage);
-        const response = await result.response;
-        return response.text();
+        return result.response.text();
 
     } catch (error) {
-        console.error("❌ Gemini API Error:", error.message);
-        return "I'm having a little trouble connecting right now, but I'm here. Could you say that again?";
+        console.error("❌ Gemini Error:", error.message);
+
+        // Backup Logic (Experimental Model)
+        if (error.message.includes("404") || error.message.includes("429")) {
+            try {
+                const backupModel = genAI.getGenerativeModel({
+                    model: "gemini-2.5-flash-lite",   //   <--- back up model
+                    systemInstruction: SYSTEM_INSTRUCTION
+                });
+                // Reset history for backup to avoid complex errors
+                const backupChat = backupModel.startChat({ history: [] });
+                const backupResult = await backupChat.sendMessage(currentMessage);
+                return backupResult.response.text();
+            } catch (e) {
+                console.error("Backup failed");
+            }
+        }
+        return "I'm having a little trouble connecting. please try again after some time [if the same problem continues just close the app bro]";
     }
 };
-
 // =================================================================
 // 🎮 CONTROLLER ACTIONS
 // =================================================================
