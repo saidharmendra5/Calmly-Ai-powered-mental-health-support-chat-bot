@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Wind, Play, Pause, RotateCcw, ArrowLeft, Clock, Activity } from 'lucide-react';
-import { breathingExercises } from '../data/mockData';
+import { breathingExercises } from '../data/BreathingData';
 
 const BreathingExerciseCard = ({ exercise, onStart }) => {
   return (
@@ -142,10 +142,10 @@ const BreathingSession = ({ exercise, onBack }) => {
             <div className="text-center transform scale-100 transition-transform duration-300 px-4">
               {isPlaying ? (
                 <>
-                  <p className="text-3xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">
+                  <p className="text-xl md:text-xl font-bold text-white mb-2 drop-shadow-lg">
                     {currentStep.label}
                   </p>
-                  <p className="text-white/90 text-xs md:text-sm font-medium tracking-wider uppercase bg-black/20 px-3 py-1 rounded-full inline-block">
+                  <p className="text-white/90 text-xs md:text-sm font-medium tracking-wider lowercase bg-black/20 px-3 py-1 rounded-full inline-block">
                     {currentStep.instruction}
                   </p>
                 </>
