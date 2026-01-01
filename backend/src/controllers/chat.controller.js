@@ -1,150 +1,3 @@
-// const pool = require("../db");
-
-// // =================================================================
-// // 🤖 YOUR CUSTOM AI INTEGRATION POINT
-// // =================================================================
-// // When you are ready to connect your own AI API, update this function.
-// // For now, it returns a placeholder response.
-// const generateAIResponse = async (userMessage) => {
-
-//     // TODO: Your Custom API Logic Here
-//     // Example: const response = await fetch('http://your-python-model/predict', ...)
-
-//     // Simulating a small delay to mimic processing
-//     await new Promise(resolve => setTimeout(resolve, 800));
-
-//     return `Bellman–Ford Algorithm: Time & Space Complexity Explained  :  
-//     The Bellman–Ford algorithm is used to find the shortest paths from a single source in a weighted graph, even when negative edge weights are present. It can also detect negative weight cycles. [this is just a place holder ]`;
-// };
-// // =================================================================
-
-
-// // 1. Get All Chats (Sidebar)
-// exports.getAllChats = async (req, res) => {
-//     try {
-//         const userId = req.user.id;
-//         const result = await pool.query(
-//             "SELECT id, title, created_at FROM chats WHERE user_id = $1 ORDER BY updated_at DESC",
-//             [userId]
-//         );
-//         res.json(result.rows);
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ error: "Server Error" });
-//     }
-// };
-
-// // 2. Get Single Chat History
-// exports.getChatHistory = async (req, res) => {
-//     try {
-//         const { chatId } = req.params;
-//         const userId = req.user.id;
-
-//         // Verify chat belongs to user
-//         const chatCheck = await pool.query(
-//             "SELECT id FROM chats WHERE id = $1 AND user_id = $2",
-//             [chatId, userId]
-//         );
-
-//         if (chatCheck.rows.length === 0) {
-//             return res.status(404).json({ message: "Chat not found" });
-//         }
-
-//         // Fetch messages
-//         const messages = await pool.query(
-//             "SELECT id, role, content, created_at FROM messages WHERE chat_id = $1 ORDER BY created_at ASC",
-//             [chatId]
-//         );
-
-//         res.json({ id: chatId, messages: messages.rows });
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ error: "Server Error" });
-//     }
-// };
-
-// // 3. Start New Chat
-// exports.createChat = async (req, res) => {
-//     const client = await pool.connect(); // Start transaction
-//     try {
-//         const { message } = req.body;
-//         const userId = req.user.id;
-//         const title = message.substring(0, 30) + "..."; // Auto-title
-
-//         await client.query('BEGIN');
-
-//         // A. Create Chat
-//         const chatResult = await client.query(
-//             "INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id",
-//             [userId, title]
-//         );
-//         const chatId = chatResult.rows[0].id;
-
-//         // B. Save User Message
-//         await client.query(
-//             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
-//             [chatId, 'user', message]
-//         );
-
-//         // C. Get & Save AI Response
-//         const aiResponse = await generateAIResponse(message);
-//         await client.query(
-//             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
-//             [chatId, 'assistant', aiResponse]
-//         );
-
-//         await client.query('COMMIT');
-
-//         // Return chatId so frontend can redirect
-//         res.json({ chatId, reply: aiResponse });
-
-//     } catch (err) {
-//         await client.query('ROLLBACK');
-//         console.error(err.message);
-//         res.status(500).json({ error: "Failed to start chat" });
-//     } finally {
-//         client.release();
-//     }
-// };
-
-// // 4. Send Message (Existing Chat)
-// exports.sendMessage = async (req, res) => {
-//     try {
-//         const { chatId } = req.params;
-//         const { message } = req.body;
-//         const userId = req.user.id;
-
-//         // Verify ownership
-//         const chatCheck = await pool.query(
-//             "SELECT id FROM chats WHERE id = $1 AND user_id = $2",
-//             [chatId, userId]
-//         );
-//         if (chatCheck.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
-
-//         // A. Save User Message
-//         await pool.query(
-//             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
-//             [chatId, 'user', message]
-//         );
-
-//         // B. Generate & Save AI Response
-//         const aiResponse = await generateAIResponse(message);
-//         await pool.query(
-//             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
-//             [chatId, 'assistant', aiResponse]
-//         );
-
-//         // C. Update chat timestamp (so it moves to top of sidebar)
-//         await pool.query("UPDATE chats SET updated_at = NOW() WHERE id = $1", [chatId]);
-
-//         res.json({ reply: aiResponse });
-
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).json({ error: "Failed to send message" });
-//     }
-// };
-
 const pool = require("../db");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -155,69 +8,54 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Ensure GEMINI_API_KEY is in your .env file
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// The "Soul" of your bot
+// The "Hard Guardrails" for your bot
 const SYSTEM_INSTRUCTION = `
-You are Calmly, a supportive mental health AI companion.
-1. Tone: Warm, empathetic, and gentle.
-2. Safety: If a user mentions self-harm or suicide, kindly suggest seeking professional help immediately.
-3. Length: Keep responses concise (2-4 sentences) to encourage conversation.
-4. Memory: You remember details the user shared previously.
-5. Formatting: Do not use bullet points or bold text unless absolutely necessary. Write like a caring human friend.
+You are Calmly, a specialized mental health support AI.
+
+1. SCOPE RESTRICTION (STRICT):
+   - You act ONLY as a mental health companion.
+   - You can discuss: emotions, anxiety, depression, stress, relationships, mindfulness, and self-care.
+   - If the user asks about ANYTHING else (e.g., coding, math, history, movies, facts, homework), you MUST ignore the question and return EXACTLY this message:
+   "I am designed to provide support for your mental well-being. I cannot assist with other topics, but I am here to listen if you would like to share how you are feeling."
+
+2. SAFETY:
+   - If a user mentions self-harm or suicide, kindly suggest seeking professional help immediately and provide standard helpline context.
+
+3. TONE & STYLE:
+   - Warm, empathetic, and gentle.
+   - Concise (2-3 sentences maximum).
+   - No bullet points. Speak naturally.
 `;
 
-/**
- * Generates a response using Gemini 1.5 Flash, taking conversation history into account.
- * @param {string} chatId - The ID of the current chat session (to fetch history).
- * @param {string} currentMessage - The new message the user just sent.
- */
 const generateGeminiResponse = async (chatId, currentMessage) => {
     try {
-        // 1. Fetch Last 3 Messages
-        // We need 3 because the "Current Message" is already in the DB.
-        // Fetching 3 gives us: [Oldest, Previous Bot, Current User]
-        const historyResult = await pool.query(
-            "SELECT role, content FROM messages WHERE chat_id = $1 ORDER BY created_at DESC LIMIT 3",
-            [chatId]
-        );
-
-        // 2. Process History
-        // a. Reverse to get chronological order (Old -> New)
-        // b. Filter out the current message (we send it separately)
-        let history = historyResult.rows
-            .reverse()
-            .filter(msg => msg.content !== currentMessage)
-            .map(msg => ({
-                role: msg.role === 'assistant' ? 'model' : 'user',
-                parts: [{ text: msg.content }],
-            }));
-
-        // 3. Safety Check: History MUST start with 'user'
-        // If we only found a bot message left, we must discard it.
-        if (history.length > 0 && history[0].role === 'model') {
-            history.shift();
-        }
-
-        // 4. Initialize & Run
+        // 1. Initialize Model (Using Free Lite Model)
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash-lite",  //  <---   Main model 
+            model: "gemini-2.5-flash-lite",
             systemInstruction: SYSTEM_INSTRUCTION
         });
 
-        const chat = model.startChat({ history: history });
+        // 2. Start Chat WITHOUT History (Stateless Mode)
+        // We pass an empty array [] so it knows nothing about previous texts.
+        const chat = model.startChat({
+            history: [],
+        });
+
+        // 3. Generate Response
         const result = await chat.sendMessage(currentMessage);
-        return result.response.text();
+        const response = await result.response;
+        return response.text();
 
     } catch (error) {
-        console.error("❌ Gemini Error:", error.message);
+        console.error("Error:", error.message);
 
         // Backup Logic (Experimental Model)
         if (error.message.includes("404") || error.message.includes("429")) {
             try {
                 const backupModel = genAI.getGenerativeModel({
-                    model: "gemini-2.5-flash-lite",   //   <--- back up model
+                    model: "gemini-2.0-flash-exp",
                     systemInstruction: SYSTEM_INSTRUCTION
                 });
-                // Reset history for backup to avoid complex errors
                 const backupChat = backupModel.startChat({ history: [] });
                 const backupResult = await backupChat.sendMessage(currentMessage);
                 return backupResult.response.text();
@@ -225,9 +63,11 @@ const generateGeminiResponse = async (chatId, currentMessage) => {
                 console.error("Backup failed");
             }
         }
-        return "I'm having a little trouble connecting. please try again after some time [if the same problem continues just close the app bro]";
+
+        return "I'm having a little trouble connecting right now. Could you say that again?";
     }
 };
+
 // =================================================================
 // 🎮 CONTROLLER ACTIONS
 // =================================================================
@@ -278,29 +118,25 @@ exports.getChatHistory = async (req, res) => {
 
 // 3. Start New Chat
 exports.createChat = async (req, res) => {
-    const client = await pool.connect(); // Start transaction
+    const client = await pool.connect();
     try {
         const { message } = req.body;
         const userId = req.user.id;
-        const title = message.substring(0, 30) + "..."; // Auto-title
+        const title = message.substring(0, 30) + "...";
 
         await client.query('BEGIN');
 
-        // A. Create Chat
         const chatResult = await client.query(
             "INSERT INTO chats (user_id, title) VALUES ($1, $2) RETURNING id",
             [userId, title]
         );
         const chatId = chatResult.rows[0].id;
 
-        // B. Save User Message
         await client.query(
             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
             [chatId, 'user', message]
         );
 
-        // C. Generate & Save AI Response
-        // We pass 'chatId' so the AI can look up the message we just saved for context
         const aiResponse = await generateGeminiResponse(chatId, message);
 
         await client.query(
@@ -309,8 +145,6 @@ exports.createChat = async (req, res) => {
         );
 
         await client.query('COMMIT');
-
-        // Return chatId so frontend can redirect
         res.json({ chatId, reply: aiResponse });
 
     } catch (err) {
@@ -323,37 +157,109 @@ exports.createChat = async (req, res) => {
 };
 
 // 4. Send Message (Existing Chat)
+// exports.sendMessage = async (req, res) => {
+//     try {
+//         const { chatId } = req.params;
+//         const { message } = req.body;
+//         const userId = req.user.id;
+
+//         const chatCheck = await pool.query(
+//             "SELECT id FROM chats WHERE id = $1 AND user_id = $2",
+//             [chatId, userId]
+//         );
+//         if (chatCheck.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
+
+//         await pool.query(
+//             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
+//             [chatId, 'user', message]
+//         );
+
+//         const aiResponse = await generateGeminiResponse(chatId, message);
+
+//         await pool.query(
+//             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
+//             [chatId, 'assistant', aiResponse]
+//         );
+
+//         await pool.query("UPDATE chats SET updated_at = NOW() WHERE id = $1", [chatId]);
+
+//         res.json({ reply: aiResponse });
+
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).json({ error: "Failed to send message" });
+//     }
+// };
+
+
+// 1. Define keywords to watch for
+const distressKeywords = [
+    "suicide",
+    "kill myself",
+    "end it all",
+    "want to die",
+    "end my life",
+    "hurt myself",
+    "i want to end this"
+];
+
+// 2. Placeholder function for the SMS logic (we will connect this to Twilio later)
+const triggerEmergencySMS = async (userId, userMessage) => {
+    console.log(`[EMERGENCY TRIGGERED] User: ${userId} | Message: "${userMessage}"`);
+    // TODO: Call the /api/send-sos endpoint or execute Twilio logic here
+};
+
 exports.sendMessage = async (req, res) => {
     try {
         const { chatId } = req.params;
         const { message } = req.body;
         const userId = req.user.id;
 
-        // Verify ownership
+        // --- Step 1: Authorization Check ---
         const chatCheck = await pool.query(
             "SELECT id FROM chats WHERE id = $1 AND user_id = $2",
             [chatId, userId]
         );
         if (chatCheck.rows.length === 0) return res.status(403).json({ error: "Unauthorized" });
 
-        // A. Save User Message
+        // --- Step 2: Save User Message (We always want to record what they said) ---
         await pool.query(
             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
             [chatId, 'user', message]
         );
 
-        // B. Generate & Save AI Response
-        const aiResponse = await generateGeminiResponse(chatId, message);
+        // --- Step 3: Distress Analysis ---
+        const lowerCaseMessage = message.toLowerCase();
+        const isDistressed = distressKeywords.some(keyword => lowerCaseMessage.includes(keyword));
 
+        let finalResponse = "";
+
+        if (isDistressed) {
+            // --- EMERGENCY FLOW ---
+
+            // A. Trigger the placeholder SMS logic
+            await triggerEmergencySMS(userId, message);
+
+            // B. Set the Safety Message (Do NOT call Gemini)
+            finalResponse = "I am detecting that you are in significant distress. Please do not take any actions in stress. You are not alone. Please contact a loved one or an emergency helpline immediately.";
+
+        } else {
+            // --- NORMAL FLOW ---
+
+            // A. Call Gemini API
+            finalResponse = await generateGeminiResponse(chatId, message);
+        }
+
+        // --- Step 4: Save the Assistant Response (Either Safety Msg or AI Msg) ---
         await pool.query(
             "INSERT INTO messages (chat_id, role, content) VALUES ($1, $2, $3)",
-            [chatId, 'assistant', aiResponse]
+            [chatId, 'assistant', finalResponse]
         );
 
-        // C. Update chat timestamp (so it moves to top of sidebar)
+        // --- Step 5: Update Timestamp ---
         await pool.query("UPDATE chats SET updated_at = NOW() WHERE id = $1", [chatId]);
 
-        res.json({ reply: aiResponse });
+        res.json({ reply: finalResponse });
 
     } catch (err) {
         console.error(err.message);
