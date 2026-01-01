@@ -66,9 +66,9 @@ const Profile = () => {
     <div className="h-full bg-gray-900 overflow-y-auto">
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">Profile Settings</h1>
+          <h1 className="text-4xl font-bold mb-4">User Details</h1>
           <p className="text-gray-400 text-lg">
-            Manage your personal information and preferences
+            your personal information and contact
           </p>
         </div>
 
@@ -171,7 +171,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-6">
+        {/* <div className="grid md:grid-cols-3 gap-6 mb-6">
           <button className="p-6 bg-gray-800/50 border border-gray-700 rounded-2xl hover:border-blue-500/30 transition-all text-left group">
             <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Shield className="w-6 h-6 text-blue-400" />
@@ -195,9 +195,9 @@ const Profile = () => {
             <h3 className="text-lg font-semibold mb-2">Security</h3>
             <p className="text-gray-400 text-sm">Update password and security settings</p>
           </button>
-        </div>
+        </div> */}
 
-        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+        {/* <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
           <div className="flex items-start space-x-4">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <Shield className="w-6 h-6 text-white" />
@@ -210,7 +210,7 @@ const Profile = () => {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
